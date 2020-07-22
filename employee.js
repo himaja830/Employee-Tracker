@@ -47,6 +47,9 @@ function initial() {
                 case "Add Role":
                     addRole();
                     break;
+                case "Add Employee":
+                    addEmployee();
+                    break;
                 case "Update Employee Role":
                     updateEmployeeRole();
                     break;
@@ -145,42 +148,47 @@ function addRole() {
     })
 }
 
-function updateEmployeeRole() {
-    const query = "SELECT employee.id as value," + "CONCAT(employee.first_name,' ',employee.last_name)as name FROM employee WHERE manager_id IS NOT NULL";
-    connection.query(query, function (err, res) {
-                if (err) throw err;
-                let array = JSON.parse(JSON.stringify(res));
-                inquirer.prompt({
-                        name: "employee",
-                        type: "list",
-                        message: "Which employee/'s role do you want to change? ",
-                        choices: array
-                    }).then(function (answer1) {
-                            const query = "SELECT id as value, title as name FROM role";
+function addEmployee() {
+    inquirer.prompt([{
+                type: "input",
+                name: "first_name",
+                message: "What is your first name?"
+            },
+            {
+                type: "input",
+                name: "last_name",
+                message: "What is your last name?"
+            }
+        ]).then(function (answer) {
+                const query = "SELECT id as value, title as name FROM role";
+                connection.query(query, function (err, res) {
+                    if (err) throw err;
+                    let array = JSON.parse(JSON.stringify(res));
+                    inquirer
+                        .prompt({
+                            name: "role",
+                            type: "list",
+                            message: "Choose a role for the new employee",
+                            choices: array
+                        }).then(function (answer1) {
+                            var query = "SELECT employee.id as value, CONCAT(employee.first_name, ' ', employee.last_name) as name " +
+                                "FROM employee INNER JOIN role ON employee.role_id = role.id ";
                             connection.query(query, function (err, res) {
                                 if (err) throw err;
                                 let array2 = JSON.parse(JSON.stringify(res));
                                 inquirer
                                     .prompt({
-                                        name: "role",
+                                        name: "manager",
                                         type: "list",
-                                        message: "Which is the new role?",
+                                        message: "Assign a manager for the new employee",
                                         choices: array2
-                                    })
-                                    .then(function (answer2) {
-                                        connection.query("UPDATE employee SET role_id = ? WHERE employee_id = ?",
-                                            [answer2.role, answer1.employee],
+                                    }).then(function (answer2) {
+                                        connection.query("INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ( ?, ?, ?, ?)",
+                                            [answer.first_name, answer.last_name, answer1.role, answer2.manager],
                                             function (err, res) {
-                                                if (err) {
-                                                    if (err) {
-                                                        console.log("Not allowed due to foreign key !");
-                                                    } else {
-                                                        console.log("An error occured!");
-                                                    }
-                                                    return initial();
-                                                }
+                                                if (err) throw err;
                                                 if (res.affectedRows > 0) {
-                                                    console.log(res.affectedRows + " record updated successfully!");
+                                                    console.log(res.affectedRows + " record added successfully!");
                                                 }
                                                 console.log("");
                                                 initial();
@@ -188,5 +196,52 @@ function updateEmployeeRole() {
                                     });
                             });
                         });
-    });
+                });
+            });
 }
+
+            function updateEmployeeRole() {
+                const query = "SELECT employee.id as value," + "CONCAT(employee.first_name,' ',employee.last_name)as name FROM employee WHERE manager_id IS NOT NULL";
+                connection.query(query, function (err, res) {
+                    if (err) throw err;
+                    let array = JSON.parse(JSON.stringify(res));
+                    inquirer.prompt({
+                        name: "employee",
+                        type: "list",
+                        message: "Which employee/'s role do you want to change? ",
+                        choices: array
+                    }).then(function (answer1) {
+                        const query = "SELECT id as value, title as name FROM role";
+                        connection.query(query, function (err, res) {
+                            if (err) throw err;
+                            let array2 = JSON.parse(JSON.stringify(res));
+                            inquirer
+                                .prompt({
+                                    name: "role",
+                                    type: "list",
+                                    message: "Which is the new role?",
+                                    choices: array2
+                                })
+                                .then(function (answer2) {
+                                    connection.query("UPDATE employee SET role_id = ? WHERE employee_id = ?",
+                                        [answer2.role, answer1.employee],
+                                        function (err, res) {
+                                            if (err) {
+                                                if (err) {
+                                                    console.log("Not allowed due to foreign key !");
+                                                } else {
+                                                    console.log("An error occured!");
+                                                }
+                                                return initial();
+                                            }
+                                            if (res.affectedRows > 0) {
+                                                console.log(res.affectedRows + " record updated successfully!");
+                                            }
+                                            console.log("");
+                                            initial();
+                                        });
+                                });
+                        });
+                    });
+                });
+            }
